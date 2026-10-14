@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-14
+
 ### Added
 
 - Track La Poste parcels (Colissimo, Chronopost, tracked letters) with the official La Poste "Suivi" API v2 and a
@@ -22,3 +24,6 @@ the notes of the version's GitHub Release.
 - Each parcel is read every 30 minutes (adjustable), never once delivered, and removed 7 days after delivery
   (adjustable).
 - English, French, German and Spanish everywhere.
+
+[Unreleased]: https://github.com/guim31/gladys-laposte/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/guim31/gladys-laposte/releases/tag/v1.0.0
