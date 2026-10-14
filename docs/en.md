@@ -1,61 +1,126 @@
-# Demo Devices Template
+# La Poste
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+Track your La Poste parcels in Gladys: Colissimo, Chronopost and tracked letters, through the official La Poste
+tracking API ("Suivi" v2).
 
-## What you get
+> **Developed without the hardware** (here: without an API key of La Poste): feedback welcome on the
+> [Gladys forum](https://community.gladysassistant.com/). The answers of the API were simulated from its
+> documentation.
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+## What it does
+
+- You add a parcel with its tracking number (and a name if you wish), from the configuration or from a scene.
+- The integration reads its status from La Poste every 30 minutes (adjustable), and stops once it is delivered.
+- A "La Poste parcels" device gives the counts (on the way, out for delivery, to pick up, problems, recently
+  delivered) and a summary sentence.
+- The "My parcels" widget lists your parcels with their status, last event and date.
+- Four scene triggers: out for delivery, delivered, to pick up, problem. Two scene actions: track a parcel, read my
+  parcels.
+- A delivered parcel leaves the list by itself after 7 days (adjustable).
+
+## Requirements
+
+- Gladys 5.1.0 or later.
+- A free API key of La Poste:
+  1. create an account on [developer.laposte.fr](https://developer.laposte.fr/);
+  2. open the [Suivi API](https://developer.laposte.fr/products/suivi/latest) and subscribe to its free plan;
+  3. copy the key of the subscription (the `X-Okapi-Key`, 64 characters).
+- Gladys must reach the internet (`api.laposte.fr`).
 
 ## Configuration
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+Install the integration from **Integrations → Install from GitHub** with the address
+`https://github.com/guim31/gladys-laposte`, then open its configuration.
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+| Setting                | Default    | What it does                                                                                        |
+| ---------------------- | ---------- | --------------------------------------------------------------------------------------------------- |
+| API key                | (required) | The key of your "Suivi" subscription. It never appears in the logs.                                 |
+| Reading interval       | 30 minutes | How often each parcel on the way is read (15 minutes to 4 hours). Delivered parcels are not read.   |
+| Keep delivered parcels | 7 days     | A delivered or returned parcel leaves the list after this time (1 to 30 days).                      |
+| Language               | French     | Names of the features of the new device, language of the La Poste texts, of messages and sentences. |
 
-## Actions
+The connection status of the configuration screen tells whether La Poste accepts the key.
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+Actions of the configuration screen:
 
-## Scenes
+- **Add a parcel**: tracking number (11 to 15 letters and digits, spaces allowed) and an optional name. A number
+  already tracked keeps its parcel, and gets the new name if you give one. The parcel is read at once.
+- **Remove a parcel**: by name or by number.
+- **Read the parcels now**: reads every parcel on the way without waiting for the interval, and checks the key.
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+## The device
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+Create the **La Poste parcels** device in the **Discover** tab. It is one device for all your parcels: parcels only
+live a few days, and one device per parcel would leave a dead device behind every delivery.
 
-## Dashboard
+| Feature            | Type    | Content                                                                     |
+| ------------------ | ------- | --------------------------------------------------------------------------- |
+| Parcels on the way | Counter | Parcels not delivered yet                                                   |
+| Out for delivery   | Counter | Parcels in today's round of the postman or the courier                      |
+| To pick up         | Counter | Parcels waiting at a post office or a pickup point                          |
+| Problems           | Counter | Parcels delayed, held at customs, undeliverable or going back to sender     |
+| Recently delivered | Counter | Delivered parcels still in the list                                         |
+| Summary            | Text    | "You have 2 parcels on the way: Shoes, out for delivery; Book, in transit." |
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+The counters keep their history and can be used in scene conditions.
+
+## The widget
+
+**My parcels** (Dashboard → Edit → add a widget of the integration) lists up to 8 parcels, the ones needing you
+first (out for delivery, to pick up, problem), then the others. Each row shows the name, a status badge, the last
+event and its date. A tap opens the details: carrier, number, expected or delivery date, pickup point, the last
+events, and a link to the tracking page of laposte.fr. A line warns when the key is missing or refused, or when
+La Poste does not answer.
+
+## Scene triggers
+
+| Trigger                      | When                                                                                      |
+| ---------------------------- | ----------------------------------------------------------------------------------------- |
+| A parcel is out for delivery | The parcel is in today's round                                                            |
+| A parcel is delivered        | La Poste reports it delivered (not for a parcel already delivered when you add it)        |
+| A parcel awaits pickup       | The parcel waits at a post office or a pickup point, after a missed delivery or by choice |
+| A parcel has a problem       | Delay, incomplete address, customs, undeliverable, or returned to the sender              |
+
+Each trigger fires once when the parcel enters the status, and gives these variables: parcel name, tracking number,
+status, last event (text of La Poste), carrier, pickup point, tracking page.
+
+## Scene actions
+
+- **Track a parcel**: adds a parcel to the list. The number field also takes a whole text, such as the subject of a
+  mail: its first tracking number is used. Outputs: number, name, status, new parcel (1 or 0). Without a number in
+  the text, the action fails and the scene logs it.
+- **Read my parcels**: outputs a sentence listing the parcels on the way ("You have 2 parcels on the way: …"), and
+  the numbers of parcels on the way, out for delivery and to pick up.
+
+## Scene examples
+
+- **Delivery today**: trigger "A parcel is out for delivery" → send a message "… arrives today", with the "Parcel name" variable of the trigger.
+- **Do not forget the pickup**: trigger "A parcel awaits pickup" → message with the pickup point.
+- **Morning briefing**: every day at 8:00 → "Read my parcels" → say the sentence on a speaker, only if "parcels on
+  the way" is above 0 ("Condition on variables" step).
+- **Tracking from mails**: with an integration that turns received mails into scene triggers (IMAP), trigger "mail
+  received from Colissimo" → "Track a parcel" with the subject of the mail as number.
 
 ## Troubleshooting
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+- **"La Poste refuses the API key"**: check that you copied the key of the "Suivi" subscription, without spaces,
+  and that the subscription is active on developer.laposte.fr. The readings start again once the key is changed.
+- **A parcel stays "Not found yet"**: La Poste only knows a parcel once the sender hands it over. The number is kept
+  and read again; after 30 days without an answer, it is removed.
+- **"La Poste quota reached"** or **"does not answer"**: the readings pause (one hour, or the time La Poste gives;
+  10 minutes for an outage), then start again by themselves.
+- **No value on the device**: create the device in the Discover tab; its values are sent at once.
+- Detailed logs: set `LOG_LEVEL=debug` on the container.
+
+## Limits
+
+- **Developed without the hardware**: without an API key, the tests ran on answers simulated from the
+  documentation of the API. The first users will tell whether every status is read right.
+- 50 parcels at most. The parcels of other carriers (DHL, UPS, Mondial Relay…) are not covered.
+- The quota of the free plan is listed on developer.laposte.fr (10 requests per second when written): with one
+  request per parcel every 30 minutes, the integration stays far below. The use of the API follows its terms of
+  use on developer.laposte.fr.
+- The texts of the events come from La Poste, in the language of the configuration (English, French, German or
+  Spanish).
+- The names of the features are given when the device is created: changing the language later does not rename them.
+- Not affiliated with La Poste. La Poste, Colissimo and Chronopost are trademarks of their owners.

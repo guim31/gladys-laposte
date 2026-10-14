@@ -28,8 +28,13 @@ Gladys before reporting a problem.
 
 ## Scope
 
-In scope: the code of this repository and the Docker image it publishes.
+In scope: the code of this repository and the Docker image it publishes. The
+integration stores in `/data/parcels.json` the tracked parcels (number, name,
+last events). The La Poste API key is kept by Gladys in the integration's
+configuration, sent only to `https://api.laposte.fr` in the `X-Okapi-Key`
+header, and never written to the logs. The container makes no other network
+request and opens no port.
 
 Out of scope: Gladys Assistant itself (see its
 [security policy](https://github.com/GladysAssistant/Gladys/security/policy)),
-and the third-party services and devices the integration talks to.
+and the La Poste API.

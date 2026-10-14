@@ -1,0 +1,90 @@
+{
+  "lang": "fr_FR",
+  "scope": "open",
+  "returnCode": 200,
+  "shipment": {
+    "idShip": "6A12345678904",
+    "holder": 4,
+    "product": "colissimo",
+    "isFinal": true,
+    "entryDate": "2020-07-04T01:25:12+02:00",
+    "timeline": [
+      {
+        "shortLabel": "Votre colis est pris en charge",
+        "longLabel": "",
+        "id": 1,
+        "date": "2020-07-04T01:25:12+02:00",
+        "country": "",
+        "status": true,
+        "type": 1
+      },
+      {
+        "shortLabel": "Il est en traitement dans notre réseau.",
+        "longLabel": "",
+        "id": 2,
+        "country": "",
+        "status": true,
+        "type": 1
+      },
+      {
+        "shortLabel": "Il est en cours de transport vers votre site de livraison",
+        "longLabel": "",
+        "id": 3,
+        "country": "",
+        "status": true,
+        "type": 1
+      },
+      {
+        "shortLabel": "",
+        "longLabel": "",
+        "id": 4,
+        "country": "",
+        "status": true,
+        "type": 1
+      },
+      {
+        "shortLabel": "",
+        "longLabel": "",
+        "id": 5,
+        "country": "",
+        "status": true,
+        "type": 1
+      }
+    ],
+    "event": [
+      {
+        "order": 100,
+        "code": "DI1",
+        "date": "2026-10-14T12:31:09+02:00",
+        "label": "Votre colis est livré."
+      },
+      {
+        "order": 99,
+        "code": "MD2",
+        "date": "2026-10-14T07:58:12+02:00",
+        "label": "Votre colis est en cours de livraison."
+      },
+      {
+        "order": 98,
+        "code": "ET1",
+        "date": "2026-10-12T21:40:07+02:00",
+        "label": "Votre colis est en transit sur nos plateformes logistiques pour vous être livré le plus rapidement possible."
+      },
+      {
+        "order": 97,
+        "code": "PC1",
+        "date": "2026-10-12T17:02:55+02:00",
+        "label": "Votre colis a été déposé après l'heure limite de dépôt. Il sera expédié dès le prochain jour ouvré."
+      }
+    ],
+    "contextData": {
+      "deliveryChoice": {
+        "deliveryChoice": 0
+      },
+      "originCountry": "FR",
+      "arrivalCountry": "FR"
+    },
+    "url": "https://www.laposte.fr/outils/suivre-vos-envois?code=6A12345678904",
+    "deliveryDate": "2026-10-14T12:31:09+02:00"
+  }
+}
