@@ -172,7 +172,7 @@ test('a refused key stops the readings until the key changes', async (t) => {
   assert.equal(w.tracker.parcels.get(NUMBERS.inTransit).status, 'in_transit');
 });
 
-test('a quota reached pauses the readings for its Retry-After, an outage for 10 minutes', async (t) => {
+test('a quota reached pauses the readings for its Retry-After; an outage pauses them too', async (t) => {
   const w = await world(t);
   await addParcel(w, NUMBERS.inTransit);
   w.api.failAll = { status: 429, body: fixture('error-429'), headers: { 'Retry-After': '3600' } };
@@ -186,11 +186,12 @@ test('a quota reached pauses the readings for its Retry-After, an outage for 10 
 
   w.api.failAll = { status: 503, body: fixture('error-503') };
   await after(w, 30 * MIN);
+  assert.equal(w.tracker.pauseUntil, w.clock.now() + 10 * MIN, 'an outage pauses 10 minutes');
   w.api.failAll = null;
-  await after(w, 5 * MIN);
-  assert.equal(w.api.requests.length, requests + 2, 'paused');
-  await after(w, 5 * MIN);
-  assert.equal(w.api.requests.length, requests + 3, 'read again 10 minutes later');
+  await after(w, 10 * MIN);
+  assert.equal(w.api.requests.length, requests + 2, 'the failed parcel waits its interval');
+  await after(w, 20 * MIN);
+  assert.equal(w.api.requests.length, requests + 3, 'read again at its next interval');
 });
 
 test('a restart keeps the parcels, their pace and their triggers', async (t) => {
@@ -284,4 +285,55 @@ test(`${MAX_PARCELS} parcels at most`, async (t) => {
     await addParcel(w, `6A${String(i).padStart(11, '0')}`);
   }
   assert.match((await addParcel(w, NUMBERS.inTransit)).data.message.en, /50 parcels are tracked/);
+});
+
+test('a number La Poste keeps failing on does not block the others', async (t) => {
+  const w = await world(t);
+  await addParcel(w, NUMBERS.problem);
+  await addParcel(w, NUMBERS.inTransit);
+  w.api.answers[NUMBERS.problem] = { status: 500, body: fixture('error-500') };
+  await after(w, 30 * MIN); // the first one fails: pause
+  await after(w, 10 * MIN); // the second one is read after the pause
+  assert.equal(w.api.readsOf(NUMBERS.inTransit), 2);
+  assert.equal(w.api.readsOf(NUMBERS.problem), 2);
+});
+
+test('an answer for the old key is ignored once the key changed', async (t) => {
+  const w = await world(t, { config: { api_key: 'old-key' } });
+  await w.fake.configUpdated({ api_key: KEY });
+  assert.deepEqual(w.fake.connectionStatus, { connected: true });
+  // A request sent with the old key and answered after the change.
+  const original = w.api.fetch;
+  w.tracker.fetch = async (url, options) => {
+    w.tracker.config = { ...w.tracker.config, apiKey: 'newer-key' };
+    return original(url, options);
+  };
+  await addParcel(w, NUMBERS.inTransit);
+  assert.equal(w.tracker.keyRejected, false, 'the 401 of the old key is dropped');
+});
+
+test('"Read the parcels now" without parcel on the way checks the key again', async (t) => {
+  const w = await world(t, { config: { api_key: 'wrong' } });
+  assert.equal(w.tracker.keyRejected, true);
+  w.api.answers = {};
+  const fixed = createApi({ key: 'wrong' });
+  w.tracker.fetch = fixed.fetch; // the subscription became active
+  const ack = await w.fake.action('refresh');
+  assert.equal(ack.data.message.en, 'No parcel on the way to read again.');
+  assert.deepEqual(w.fake.connectionStatus, { connected: true });
+});
+
+test('a parcel removed while La Poste answers fires nothing', async (t) => {
+  const w = await world(t);
+  await addParcel(w, NUMBERS.inTransit, 'Shoes');
+  w.api.answers[NUMBERS.inTransit] = 'out-for-delivery';
+  const original = w.tracker.fetch;
+  w.tracker.fetch = async (url, options) => {
+    const response = await original(url, options);
+    await w.fake.action('remove_parcel', { parcel: 'Shoes' });
+    return response;
+  };
+  await after(w, 30 * MIN);
+  assert.deepEqual(w.fake.sceneEvents, []);
+  assert.equal(w.tracker.parcels.size, 0);
 });

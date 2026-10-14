@@ -357,7 +357,7 @@
         "de": "Liest sofort jede Sendung unterwegs, ohne auf das Intervall zu warten. Prüft auch den API-Schlüssel.",
         "es": "Lee en el acto cada paquete en curso, sin esperar al intervalo. También comprueba la clave de API."
       },
-      "timeout_seconds": 90
+      "timeout_seconds": 120
     }
   ],
   "scene_triggers": [

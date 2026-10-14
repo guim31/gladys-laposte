@@ -113,10 +113,17 @@ export const WIDGETS = {
   [WIDGET_KEY]: {
     async get(tracker, { language = 'en' } = {}) {
       const parcels = tracker.sortedParcels();
+      const problem = warning(tracker, language);
+      const caption = problem
+        ? [{ type: 'text', variant: 'caption', text: truncate(problem, 80) }]
+        : [];
       if (parcels.length === 0) {
         return {
           ttl_seconds: TTL_SECONDS,
-          components: [{ type: 'text', variant: 'body', text: pick(WIDGET_TEXT.empty, language) }],
+          components: [
+            { type: 'text', variant: 'body', text: pick(WIDGET_TEXT.empty, language) },
+            ...caption,
+          ],
         };
       }
       const components = [
@@ -133,10 +140,7 @@ export const WIDGETS = {
         );
         components.push({ type: 'text', variant: 'caption', text });
       }
-      const problem = warning(tracker, language);
-      if (problem) {
-        components.push({ type: 'text', variant: 'caption', text: truncate(problem, 80) });
-      }
+      components.push(...caption);
       return { ttl_seconds: TTL_SECONDS, components };
     },
   },

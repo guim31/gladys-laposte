@@ -66,8 +66,14 @@ export const TRIGGERS = {
 /** Status of a parsed shipment (src/laposte.js). */
 export function statusOf(shipment) {
   const code = shipment.lastEvent?.code;
-  if (code && BY_CODE[code]) {
-    return BY_CODE[code];
+  const byCode = code ? BY_CODE[code] : undefined;
+  if (shipment.isFinal && !FINAL_STATUSES.has(byCode)) {
+    // La Poste closed the tracking on a code that is not a delivery: a parcel
+    // that went back (problem) is returned, any other one delivered.
+    return byCode === 'problem' ? 'returned' : 'delivered';
+  }
+  if (byCode) {
+    return byCode;
   }
   if (code?.startsWith('DI') || shipment.isFinal) {
     return 'delivered';

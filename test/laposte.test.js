@@ -86,6 +86,10 @@ test('the event codes of the documentation map to their status', () => {
   assert.equal(status('DI3'), 'delivered');
   assert.equal(status('DI2'), 'returned');
   assert.equal(status('XX9', true), 'delivered');
+  // Tracking closed on a code that is not a delivery.
+  assert.equal(status('RE1', true), 'returned');
+  assert.equal(status('AG1', true), 'delivered');
+  assert.equal(status('DI2', true), 'returned');
   assert.equal(status(null), 'unknown');
 });
 

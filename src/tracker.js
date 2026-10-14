@@ -25,6 +25,7 @@ const logger = createLogger({ name: 'laposte' });
 export const WIDGET_KEY = 'parcels';
 export const TICK_MS = 60_000;
 export const SPACING_MS = 1_000;
+export const FORCED_SPACING_MS = 200;
 export const HEARTBEAT_MS = 12 * 3_600_000;
 export const QUOTA_PAUSE_MS = 3_600_000;
 export const UNAVAILABLE_PAUSE_MS = 10 * 60_000;
@@ -144,6 +145,9 @@ export class Tracker {
   }
 
   async reconfigure(config) {
+    // A cycle in flight reads with the old key: let it end, its answers about
+    // the old key are dropped (see `staleKey`), then read with the new one.
+    await this.cycle?.catch(() => {});
     const keyChanged = config.apiKey !== this.config.apiKey;
     const languageChanged = config.language !== this.config.language;
     this.config = config;
@@ -152,6 +156,7 @@ export class Tracker {
       this.pauseUntil = 0;
       this.connection = null;
       logger.info(config.apiKey ? 'API key changed' : 'API key removed');
+      this.refreshWidget();
     }
     if (languageChanged) {
       await this.publishDevice();
@@ -204,7 +209,9 @@ export class Tracker {
         );
         for (const parcel of due) {
           if (read > 0) {
-            await this.sleep(this.spacingMs);
+            // The user waits for a forced cycle (120 s at most): shorter
+            // spacing, still far below the quota of the free plan.
+            await this.sleep(force ? Math.min(this.spacingMs, FORCED_SPACING_MS) : this.spacingMs);
           }
           if (this.parcels.get(parcel.number) !== parcel) {
             continue; // removed meanwhile
@@ -246,17 +253,27 @@ export class Tracker {
 
   /** Reads one parcel; `stop` ends the cycle (key refused, quota, API down). */
   async read(parcel) {
+    const apiKey = this.config.apiKey;
     try {
       const shipment = await defaultFetchShipment(parcel.number, {
-        apiKey: this.config.apiKey,
+        apiKey,
         language: this.config.language,
         fetch: this.fetch,
       });
+      if (apiKey !== this.config.apiKey) {
+        return { changed: false, stop: true };
+      }
       await this.apiAnswered();
+      if (this.parcels.get(parcel.number) !== parcel) {
+        return { changed: false }; // removed while La Poste was answering
+      }
       return { changed: await this.apply(parcel, shipment) };
     } catch (err) {
       if (!(err instanceof LaPosteError)) {
         throw err;
+      }
+      if (apiKey !== this.config.apiKey) {
+        return { changed: false, stop: true };
       }
       if (err.kind === ERROR_KINDS.NOT_FOUND || err.kind === ERROR_KINDS.INVALID_NUMBER) {
         // The key works; La Poste does not know this number (yet).
@@ -269,6 +286,11 @@ export class Tracker {
         }
         return { changed: false };
       }
+      if (err.kind === ERROR_KINDS.UNAVAILABLE) {
+        // Read again at its next interval: a number La Poste keeps failing
+        // on never blocks the parcels after it.
+        parcel.checkedAt = this.now();
+      }
       await this.apiFailed(err);
       return { changed: false, stop: true };
     }
@@ -276,16 +298,22 @@ export class Tracker {
 
   /** Reads a number nobody tracks, only to learn whether the key works. */
   async checkKey() {
+    const apiKey = this.config.apiKey;
     try {
       await defaultFetchShipment(KEY_CHECK_NUMBER, {
-        apiKey: this.config.apiKey,
+        apiKey,
         language: this.config.language,
         fetch: this.fetch,
       });
-      await this.apiAnswered();
+      if (apiKey === this.config.apiKey) {
+        await this.apiAnswered();
+      }
     } catch (err) {
       if (!(err instanceof LaPosteError)) {
         throw err;
+      }
+      if (apiKey !== this.config.apiKey) {
+        return;
       }
       if (err.kind === ERROR_KINDS.NOT_FOUND || err.kind === ERROR_KINDS.INVALID_NUMBER) {
         await this.apiAnswered();
@@ -299,6 +327,7 @@ export class Tracker {
     if (this.apiProblem) {
       logger.info('The La Poste API answers again');
       this.apiProblem = null;
+      this.refreshWidget();
     }
     await this.setConnection(true);
   }
@@ -307,6 +336,7 @@ export class Tracker {
     const now = this.now();
     if (err.kind === ERROR_KINDS.INVALID_KEY) {
       this.keyRejected = true;
+      this.refreshWidget();
       logger.warn('La Poste refuses the API key: no reading until it is changed');
       await this.setConnection(false, CONNECTION.invalidKey);
       return;
@@ -319,6 +349,7 @@ export class Tracker {
       return;
     }
     this.apiProblem = kind;
+    this.refreshWidget();
     const minutes = Math.round((this.pauseUntil - now) / 60_000);
     logger.warn(`${err.message}: readings paused for ${minutes} min`);
   }
@@ -353,8 +384,9 @@ export class Tracker {
       logger.debug(`${parcel.name}: ${before} -> ${status} (${shipment.lastEvent?.code ?? '-'})`);
     }
     const trigger = TRIGGERS[status];
-    // A parcel added once delivered is not news.
-    const addedDelivered = before === 'pending' && FINAL_STATUSES.has(status);
+    // A parcel first seen delivered (never seen on the way) is not news.
+    const addedDelivered =
+      (before === 'pending' || before === 'unknown') && FINAL_STATUSES.has(status);
     if (trigger && trigger !== TRIGGERS[before] && !addedDelivered) {
       await this.fire(trigger, parcel);
     }
@@ -617,19 +649,25 @@ export class Tracker {
     if (!this.config.apiKey) {
       throw new UserError(inAllLanguages((l) => MESSAGES[l].noKey));
     }
-    if (this.activeParcels().length === 0) {
-      return inAllLanguages((l) => MESSAGES[l].nothingToRefresh);
-    }
     // The user asks: one more try, even after a refusal or a pause.
+    await this.cycle?.catch(() => {});
     this.keyRejected = false;
     this.pauseUntil = 0;
-    await this.cycle?.catch(() => {});
-    const count = await this.runCycle({ force: true });
+    const active = this.activeParcels().length;
+    let count = 0;
+    if (active === 0) {
+      await this.checkKey();
+    } else {
+      count = await this.runCycle({ force: true });
+    }
     if (this.keyRejected) {
       throw new UserError(inAllLanguages((l) => ERRORS[l].invalid_key));
     }
     if (this.apiProblem && count === 0) {
       throw new UserError(inAllLanguages((l) => ERRORS[l][this.apiProblem]));
+    }
+    if (active === 0) {
+      return inAllLanguages((l) => MESSAGES[l].nothingToRefresh);
     }
     return inAllLanguages((l) => MESSAGES[l].refreshed({ count }));
   }

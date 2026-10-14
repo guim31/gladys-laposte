@@ -125,3 +125,10 @@ test('the widget shows 8 parcels, counts the others, and tells a refused key', a
     ['+ 3 más', 'La Poste rechaza la clave de API: compruébela en la configuración.'],
   );
 });
+
+test('the widget without parcel still tells a missing key', async (t) => {
+  const w = await world(t, { config: { api_key: '' } });
+  const c = await content(w, 'en');
+  assert.deepEqual(validateWidgetContent(c), []);
+  assert.equal(c.components[1].text.slice(0, 30), 'Enter your La Poste API key (f');
+});
