@@ -16,8 +16,8 @@ its only runtime dependency. It started from the official JavaScript template.
 ```bash
 npm install
 npm test                                  # node --test, the built-in runner
-node --test test/devices.test.js          # one file
-node --test --test-name-pattern "plug"    # tests whose name matches
+node --test test/tracker.test.js          # one file
+node --test --test-name-pattern "quota"   # tests whose name matches
 npm run lint                              # ESLint
 npm run format:check                      # Prettier, as the CI runs it
 npm run format                            # Prettier, fix in place
@@ -32,15 +32,21 @@ pushing.
 
 ```
 index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
+src/app.js                        registers every handler on the tracker (tests use the same wiring)
+src/tracker.js                    parcels, reading timer, states, scene triggers, action answers
+src/laposte.js                    La Poste "Suivi" v2 client, errors sorted by kind
+src/status.js                     event code -> status, status -> scene trigger
+src/numbers.js                    tracking number validation, extraction from a text
+src/device.js                     the single "La Poste parcels" device
 src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
+src/widgets.js                    dashboard widget handler (manifest `widgets`)
+src/texts.js                      every text of the container, en/fr/de/es
+src/store.js                      /data/parcels.json
 src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
 gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
-test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
+docs/{en,fr,de,es}.md             user documentation, re-hosted by Gladys (en and fr mandatory)
+test/                             node --test, against the SDK's fake Gladys and a simulated API
+test/fixtures/laposte/            API answers (origin in its README)
 .github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
 ```
 
@@ -70,8 +76,9 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** exists in English, French, German ("du") and Spanish
+  ("usted"): action messages, manifest texts, widget, feature names, and
+  `docs/{en,fr,de,es}.md` with the same sections. `test/i18n.test.js` checks it.
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
 
@@ -233,3 +240,22 @@ long, et sur un « Sie »/« Ihr… » de politesse en allemand. Le store exige 
 - Docs `en`, `fr`, `de`, `es` avec les mêmes sections.
 - Chauffe, ouverture, sécurité : ne rien rendre pilotable « comme un thermostat » ou par un assistant
   vocal quand une erreur serait dangereuse (leçon d'OctoPrint).
+
+## Intégration La Poste (14/10/2026)
+
+- **API** : `GET https://api.laposte.fr/suivi/v2/idships/{id}?lang=fr_FR|en_GB|de_DE|es_ES`, en-tête `X-Okapi-Key`
+  (clé gratuite, 64 caractères, abonnement « Suivi » sur developer.laposte.fr). Le portail est rendu en JavaScript :
+  la doc ne se lit pas par `curl`, mais `https://developer.laposte.fr/api/catalog-apis/suivi%40latest` donne le plan
+  gratuit (quota 10 requêtes par unité de temps 1, sans doute la seconde).
+- **Deux formes d'erreur** : celle de l'API (`{ returnCode, returnMessage }`) et celle de la passerelle Okapi
+  (`{ code, message }`) pour une clé absente ou refusée (réponse réelle relevée, 401) et le quota (429). Le statut HTTP
+  décide, le corps n'est qu'un détail.
+- **Statut** : par le code de la dernière étape (`src/status.js`). `isFinal` arrête les lectures. `estimDate` = date
+  prévue, `deliveryDate` = date de livraison. `holder` 1/2 = courrier, 3 = Chronopost, 4 = Colissimo.
+- **Un seul appareil** pour tous les colis : le SDK ne peut pas supprimer un appareil, un appareil par colis
+  laisserait un appareil mort après chaque livraison. Ne pas changer `parcels:laposte` (identifiant éternel).
+- **Sans clé de test** : tout est vérifié sur des réponses simulées (mocks MIT de debuss/LaPosteSuivi, dérivés).
+  Premier retour réel attendu : libellés et codes d'étape d'un vrai colis, en particulier `AG1` et `DI2`.
+- Les déclencheurs partent sur un **changement** de statut (même groupe : pas de second « problème » pour `RE1` puis
+  `DI2`), jamais pour un colis déjà livré à son ajout ; l'état est gardé dans `/data`, donc pas de redéclenchement
+  au redémarrage.
