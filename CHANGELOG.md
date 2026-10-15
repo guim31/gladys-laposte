@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-15
+
 ## [1.0.0] - 2026-10-14
 
 ### Added
@@ -25,5 +27,6 @@ the notes of the version's GitHub Release.
   (adjustable).
 - English, French, German and Spanish everywhere.
 
-[Unreleased]: https://github.com/guim31/gladys-laposte/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/guim31/gladys-laposte/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/guim31/gladys-laposte/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/guim31/gladys-laposte/releases/tag/v1.0.0

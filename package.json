@@ -1,6 +1,6 @@
 {
   "name": "gladys-laposte",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Gladys Assistant integration: track La Poste, Colissimo and Chronopost parcels with the official La Poste tracking API.",
   "type": "module",
