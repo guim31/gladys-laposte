@@ -21,7 +21,7 @@ La Poste (« Suivi » v2).
 
 ## Prérequis
 
-- Gladys 5.1.0 ou plus récent.
+- Gladys 5.3.0 ou plus récent.
 - Une clé d'API La Poste, gratuite :
   1. créez un compte sur [developer.laposte.fr](https://developer.laposte.fr/) ;
   2. ouvrez l'[API Suivi](https://developer.laposte.fr/products/suivi/latest) et abonnez-vous à son offre gratuite ;
