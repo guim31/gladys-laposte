@@ -22,7 +22,7 @@ offizielle Sendungsverfolgungs-API von La Poste („Suivi“ v2).
 
 ## Voraussetzungen
 
-- Gladys 5.1.0 oder neuer.
+- Gladys 5.3.0 oder neuer.
 - Ein kostenloser API-Schlüssel von La Poste:
   1. lege ein Konto auf [developer.laposte.fr](https://developer.laposte.fr/) an;
   2. öffne die [API Suivi](https://developer.laposte.fr/products/suivi/latest) und abonniere ihren kostenlosen Tarif;

@@ -20,7 +20,7 @@ tracking API ("Suivi" v2).
 
 ## Requirements
 
-- Gladys 5.1.0 or later.
+- Gladys 5.3.0 or later.
 - A free API key of La Poste:
   1. create an account on [developer.laposte.fr](https://developer.laposte.fr/);
   2. open the [Suivi API](https://developer.laposte.fr/products/suivi/latest) and subscribe to its free plan;

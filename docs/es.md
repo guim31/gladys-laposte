@@ -21,7 +21,7 @@ suivie»), con la API oficial de seguimiento de La Poste («Suivi» v2).
 
 ## Requisitos
 
-- Gladys 5.1.0 o posterior.
+- Gladys 5.3.0 o posterior.
 - Una clave de API de La Poste, gratuita:
   1. cree una cuenta en [developer.laposte.fr](https://developer.laposte.fr/);
   2. abra la [API Suivi](https://developer.laposte.fr/products/suivi/latest) y suscríbase a su plan gratuito;

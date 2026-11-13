@@ -22,7 +22,7 @@ tracked letters, through the official La Poste tracking API ("Suivi" v2, free ke
 - Each parcel is read every 30 minutes (adjustable, 15 minutes at least), never again once delivered, and leaves the
   list 7 days after delivery (adjustable).
 
-Requires **Gladys 5.1.0** or later and Internet access to `api.laposte.fr`.
+Requires **Gladys 5.3.0** or later and Internet access to `api.laposte.fr`.
 
 ## Installation
 
